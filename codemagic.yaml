@@ -1,0 +1,34 @@
+workflows:
+  telegram-simulator-preview:
+    name: Telegram Simulator (VNC)
+    max_build_duration: 120
+    environment:
+      vars:
+        APP_URL: https://github.com/Gringo2/Telegram-iOS/releases/download/build-31954/Telegram.app.zip
+      xcode: latest
+      macos:
+        version: latest
+
+    scripts:
+      - name: Download Telegram simulator build
+        script: |
+          curl -L "$APP_URL" -o Telegram.app.zip
+          unzip Telegram.app.zip
+
+      - name: Boot iOS Simulator
+        script: |
+          xcrun simctl shutdown all || true
+          xcrun simctl boot "iPhone 15"
+          open -a Simulator
+          sleep 10
+
+      - name: Install and launch Telegram
+        script: |
+          xcrun simctl install booted Telegram.app
+          BUNDLE_ID=$(defaults read Telegram.app/Info.plist CFBundleIdentifier)
+          echo "Bundle ID: $BUNDLE_ID"
+          xcrun simctl launch booted "$BUNDLE_ID"
+
+    triggering:
+      events:
+        - manual
