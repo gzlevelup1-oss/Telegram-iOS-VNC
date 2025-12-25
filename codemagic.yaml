@@ -1,47 +1,27 @@
 workflows:
   telegram-ui-only:
-    name: Telegram UI-Only Simulator
+    name: Telegram UI‑Only Simulator
     max_build_duration: 120
-
     environment:
       vars:
+        # put your direct .zip download link here
         APP_URL: https://github.com/Gringo2/Telegram-iOS/releases/download/ui-only-build-31970/Telegram.app.zip
       xcode: latest
 
     scripts:
-      - name: Download Telegram UI-Only build
+      - name: Download Telegram UI‑Only build
         script: |
-          echo "Downloading Telegram UI-Only build..."
           curl -L "$APP_URL" -o Telegram.app.zip
           unzip Telegram.app.zip
-          ls -l Telegram.app
 
       - name: Boot iOS Simulator
         script: |
-          echo "Shutting down all simulators..."
           xcrun simctl shutdown all || true
-
-          echo "Booting iPhone 15 simulator..."
           xcrun simctl boot "iPhone 15"
           open -a Simulator
+          until xcrun simctl list | grep -q "Booted"; do sleep 5; done
 
-          echo "Waiting for simulator to fully boot..."
-          until xcrun simctl list | grep -q "Booted"; do
-              sleep 5
-          done
-          echo "Simulator is ready."
-
-      - name: Install and launch Telegram UI-Only
+      - name: Install and launch
         script: |
-          # Optional safety check
-          INFO_PLIST="Telegram.app/Info.plist"
-          if [ ! -f "$INFO_PLIST" ]; then
-            echo "ERROR: Info.plist not found at $INFO_PLIST"
-            exit 1
-          fi
-
-          echo "Installing Telegram UI-Only build..."
           xcrun simctl install booted Telegram.app
-
-          echo "Launching Telegram UI-Only..."
           xcrun simctl launch booted org.telegram.Telegram
