@@ -13,6 +13,7 @@ workflows:
 
     artifacts:
       - "*.mp4"
+      - "*.log"
       
     scripts:
       - name: Download Telegram UI-Only build
@@ -90,13 +91,19 @@ workflows:
           RECORDING_PID=$!
           echo "Recording started with PID $RECORDING_PID"
 
+          # Start log streaming in background
+          echo "Starting log streaming..."
+          xcrun simctl spawn booted log stream > simulator.log &
+          LOG_PID=$!
+          echo "Log streaming started with PID $LOG_PID"
+
           # Optional safety check
           INFO_PLIST="Telegram.app/Info.plist"
           if [ ! -f "$INFO_PLIST" ]; then
             echo "ERROR: Info.plist not found at $INFO_PLIST"
-            # Stop recording before exiting
-            kill -SIGINT $RECORDING_PID
-            wait $RECORDING_PID || true
+            # Stop processes before exiting
+            kill -SIGINT $RECORDING_PID $LOG_PID
+            wait $RECORDING_PID $LOG_PID || true
             exit 1
           fi
 
@@ -109,7 +116,8 @@ workflows:
           echo "Keeping simulator alive for 60 seconds to capture session..."
           sleep 60
 
-          echo "Stopping screen recording..."
-          kill -SIGINT $RECORDING_PID
-          wait $RECORDING_PID || true
+          echo "Stopping processes..."
+          kill -SIGINT $RECORDING_PID $LOG_PID
+          wait $RECORDING_PID $LOG_PID || true
           echo "Screen recording saved to simulator_recording.mp4"
+          echo "Logs saved to simulator.log"
