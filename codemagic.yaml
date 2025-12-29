@@ -14,6 +14,7 @@ workflows:
     artifacts:
       - "*.mp4"
       - "*.log"
+      - "simulator_environment.txt"
       
     scripts:
       - name: Download Telegram UI-Only build
@@ -25,6 +26,9 @@ workflows:
 
       - name: Boot iOS Simulator
         script: |
+          echo "Generating environment report..."
+          xcrun simctl list > simulator_environment.txt
+
           echo "Shutting down all simulators..."
           xcrun simctl shutdown all || true
 
