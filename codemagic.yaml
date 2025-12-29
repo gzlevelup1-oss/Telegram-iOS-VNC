@@ -7,9 +7,13 @@ workflows:
       vars:
         APP_URL: https://github.com/Gringo2/Telegram-iOS/releases/download/ui-only-build-31965/Telegram.app.zip
         # Specify the iOS version to use (e.g., "17.0", "17.2"). Leave empty to use the default for the selected Xcode version.
-        IOS_VERSION: "13.0" 
+        IOS_VERSION: "26.0"
+        DEVICE_TYPE_ID: "iPhone 15" 
       xcode: latest
 
+    artifacts:
+      - "*.mp4"
+      
     scripts:
       - name: Download Telegram UI-Only build
         script: |
@@ -23,11 +27,14 @@ workflows:
           echo "Shutting down all simulators..."
           xcrun simctl shutdown all || true
 
-          DEVICE_NAME="iPhone 15"
-          DEVICE_TYPE_ID="iPhone 15" # Default devicetype
+          # Use environment variable or default
+          DEVICE_NAME="${DEVICE_TYPE_ID}" 
+          # DEVICE_TYPE_ID is already set in env vars, but we ensure it's used
 
           echo "Available runtimes:"
           xcrun simctl list runtimes
+          echo "Available device types:"
+          xcrun simctl list devicetypes
 
           if [ -n "$IOS_VERSION" ]; then
               echo "Attempting to boot $DEVICE_NAME with iOS $IOS_VERSION..."
@@ -75,12 +82,21 @@ workflows:
           done
           echo "Simulator is ready."
 
-      - name: Install and launch Telegram UI-Only
+      - name: Install, Launch and Record Telegram UI-Only
         script: |
+          # Start screen recording in background
+          echo "Starting screen recording..."
+          xcrun simctl io booted recordVideo simulator_recording.mp4 &
+          RECORDING_PID=$!
+          echo "Recording started with PID $RECORDING_PID"
+
           # Optional safety check
           INFO_PLIST="Telegram.app/Info.plist"
           if [ ! -f "$INFO_PLIST" ]; then
             echo "ERROR: Info.plist not found at $INFO_PLIST"
+            # Stop recording before exiting
+            kill -SIGINT $RECORDING_PID
+            wait $RECORDING_PID || true
             exit 1
           fi
 
@@ -89,3 +105,11 @@ workflows:
 
           echo "Launching Telegram UI-Only..."
           xcrun simctl launch booted org.telegram.Telegram
+
+          echo "Keeping simulator alive for 60 seconds to capture session..."
+          sleep 60
+
+          echo "Stopping screen recording..."
+          kill -SIGINT $RECORDING_PID
+          wait $RECORDING_PID || true
+          echo "Screen recording saved to simulator_recording.mp4"
