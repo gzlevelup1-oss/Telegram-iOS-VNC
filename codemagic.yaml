@@ -21,8 +21,8 @@ workflows:
         script: |
           echo "Downloading Telegram UI-Only build..."
           curl -L "$APP_URL" -o Pulse.app.zip
-          unzip Telegram.app.zip
-          ls -l Telegram.app
+          unzip Pulse.app.zip
+          ls -l Pulse.app
 
       - name: Boot iOS Simulator
         script: |
