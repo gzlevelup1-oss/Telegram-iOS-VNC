@@ -20,7 +20,7 @@ workflows:
       - name: Download Telegram UI-Only build
         script: |
           echo "Downloading Telegram UI-Only build..."
-          curl -L "$APP_URL" -o Telegram.app.zip
+          curl -L "$APP_URL" -o Pulse.app.zip
           unzip Telegram.app.zip
           ls -l Telegram.app
 
