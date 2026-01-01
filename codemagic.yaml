@@ -6,7 +6,7 @@ workflows:
     environment:
       vars:
         # Replace 'build-LAST' with the actual build tag from GitHub Releases
-        APP_URL: https://github.com/Gringo2/pulse/releases/download/build-19/Pulse.app.zip
+        APP_URL: https://github.com/Gringo2/pulse/releases/download/build-LAST/Pulse.app.zip
       xcode: latest
 
     scripts:
@@ -50,6 +50,10 @@ workflows:
 
           echo "Installing Pulse build..."
           xcrun simctl install booted "$APP_PATH"
+
+          # Ensure the binary is executable and give the simulator time to register
+          chmod +x "$APP_PATH/Pulse"
+          sleep 2
 
           echo "Launching Pulse..."
           xcrun simctl launch booted com.pulse.app
