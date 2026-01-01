@@ -1,84 +1,30 @@
 workflows:
-  telegram-ui-only:
-    name: Telegram UI-Only Simulator
+  pulse-vnc:
+    name: Pulse Simulator (VNC)
     max_build_duration: 120
 
     environment:
       vars:
-        APP_URL: https://github.com/Gringo2/pulse/releases/download/build-19/Pulse.app.zip
-        # Specify the iOS version to use (e.g., "17.0", "17.2"). Leave empty to use the default for the selected Xcode version.
-        IOS_VERSION: "26.0"
-        DEVICE_TYPE_ID: "iPhone 15" 
+        # Replace 'build-LAST' with the actual build tag from GitHub Releases
+        APP_URL: https://github.com/Gringo2/pulse/releases/download/build-LAST/Pulse.app.zip
       xcode: latest
 
-    artifacts:
-      - "*.mp4"
-      - "*.log"
-      - "simulator_environment.txt"
-      
     scripts:
-      - name: Download Telegram UI-Only build
+      - name: Download Pulse Simulator build
         script: |
-          echo "Downloading Telegram UI-Only build..."
+          echo "Downloading Pulse Simulator build..."
           curl -L "$APP_URL" -o Pulse.app.zip
           unzip Pulse.app.zip
-          ls -l Pulse.app
+          # The zip contains Payload/Pulse.app
+          ls -l Payload/Pulse.app
 
       - name: Boot iOS Simulator
         script: |
-          echo "Generating environment report..."
-          xcrun simctl list > simulator_environment.txt
-
           echo "Shutting down all simulators..."
           xcrun simctl shutdown all || true
 
-          # Use environment variable or default
-          DEVICE_NAME="${DEVICE_TYPE_ID}" 
-          # DEVICE_TYPE_ID is already set in env vars, but we ensure it's used
-
-          echo "Available runtimes:"
-          xcrun simctl list runtimes
-          echo "Available device types:"
-          xcrun simctl list devicetypes
-
-          if [ -n "$IOS_VERSION" ]; then
-              echo "Attempting to boot $DEVICE_NAME with iOS $IOS_VERSION..."
-              
-              # Find the runtime identifier (e.g., com.apple.CoreSimulator.SimRuntime.iOS-17-2)
-              # Matches lines like "iOS 17.2 (21C62) - com.apple.CoreSimulator.SimRuntime.iOS-17-2"
-              RUNTIME_ID=$(xcrun simctl list runtimes | grep -i "iOS $IOS_VERSION" | awk 'END{print $NF}')
-
-              if [ -z "$RUNTIME_ID" ]; then
-                  echo "ERROR: Could not find a runtime matching 'iOS $IOS_VERSION'."
-                  echo "Please check the available runtimes listed above or update the 'xcode' environment version."
-                  exit 1
-              fi
-              
-              echo "Found runtime: $RUNTIME_ID"
-              
-              # Create a new simulator with this runtime
-              # We use a unique name to avoid conflicts if needed, or just standard name
-              TIMESTAMP=$(date +%s)
-              CUSTOM_DEVICE_NAME="${DEVICE_NAME}_${IOS_VERSION}_${TIMESTAMP}"
-              
-              echo "Creating simulator '$CUSTOM_DEVICE_NAME'..."
-              UUID=$(xcrun simctl create "$CUSTOM_DEVICE_NAME" "$DEVICE_TYPE_ID" "$RUNTIME_ID")
-              
-              echo "Booting simulator $UUID..."
-              xcrun simctl boot "$UUID"
-          else
-              echo "IOS_VERSION not specified. Booting default '$DEVICE_NAME'..."
-              # Attempt to boot existing "iPhone 15" or create if missing (default runtime)
-              
-              # Check if device exists
-              if ! xcrun simctl list devices | grep -q "$DEVICE_NAME"; then
-                 echo "Device '$DEVICE_NAME' not found, creating..."
-                 xcrun simctl create "$DEVICE_NAME" "$DEVICE_TYPE_ID"
-              fi
-              
-              xcrun simctl boot "$DEVICE_NAME"
-          fi
-
+          echo "Booting iPhone 15 simulator..."
+          xcrun simctl boot "iPhone 15"
           open -a Simulator
 
           echo "Waiting for simulator to fully boot..."
@@ -87,41 +33,23 @@ workflows:
           done
           echo "Simulator is ready."
 
-      - name: Install, Launch and Record Telegram UI-Only
+      - name: Install and launch Pulse
         script: |
-          # Start screen recording in background
-          echo "Starting screen recording..."
-          xcrun simctl io booted recordVideo simulator_recording.mp4 &
-          RECORDING_PID=$!
-          echo "Recording started with PID $RECORDING_PID"
-
-          # Start log streaming in background
-          echo "Starting log streaming..."
-          xcrun simctl spawn booted log stream > simulator.log &
-          LOG_PID=$!
-          echo "Log streaming started with PID $LOG_PID"
-
-          # Optional safety check
-          INFO_PLIST="Telegram.app/Info.plist"
-          if [ ! -f "$INFO_PLIST" ]; then
-            echo "ERROR: Info.plist not found at $INFO_PLIST"
-            # Stop processes before exiting
-            kill -SIGINT $RECORDING_PID $LOG_PID
-            wait $RECORDING_PID $LOG_PID || true
+          APP_PATH="Payload/Pulse.app"
+          INFO_PLIST="$APP_PATH/Info.plist"
+          
+          if [ ! -d "$APP_PATH" ]; then
+            echo "ERROR: App bundle not found at $APP_PATH"
             exit 1
           fi
 
-          echo "Installing Telegram UI-Only build..."
-          xcrun simctl install booted Telegram.app
+          if [ ! -f "$INFO_PLIST" ]; then
+            echo "ERROR: Info.plist not found at $INFO_PLIST"
+            exit 1
+          fi
 
-          echo "Launching Telegram UI-Only..."
-          xcrun simctl launch booted org.telegram.Telegram
+          echo "Installing Pulse build..."
+          xcrun simctl install booted "$APP_PATH"
 
-          echo "Keeping simulator alive for 60 seconds to capture session..."
-          sleep 60
-
-          echo "Stopping processes..."
-          kill -SIGINT $RECORDING_PID $LOG_PID
-          wait $RECORDING_PID $LOG_PID || true
-          echo "Screen recording saved to simulator_recording.mp4"
-          echo "Logs saved to simulator.log"
+          echo "Launching Pulse..."
+          xcrun simctl launch booted com.pulse.app
