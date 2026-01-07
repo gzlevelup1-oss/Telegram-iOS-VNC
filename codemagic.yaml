@@ -6,7 +6,7 @@ workflows:
     environment:
       vars:
         # Replace 'build-LAST' with the actual build tag from GitHub Releases
-        APP_URL: https://github.com/Gringo2/pulse/releases/download/build-40/Pulse.app.zip
+        APP_URL: https://github.com/Gringo2/pulse/releases/download/build-46/Pulse.app.zip
       xcode: latest
 
     scripts:
